@@ -1,0 +1,7 @@
+20/06/2015
+RandomForest Classifier
+max features = sqrt
+scan num trees from 1 to 200, minimum error happens somewhere around 
+30-70, and flattens completely by 100. 
+different random instances gives slightly different curves. 
+So lets keep it safe at 100.
