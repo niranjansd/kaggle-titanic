@@ -19,37 +19,73 @@ def loadcleandata():
     test['Gender'] = test['Sex'].map( {'female': 0, 'male': 1} ).astype(int)
     all_data['Gender'] = all_data['Sex'].map( {'female': 0, 'male': 1} ).astype(int)
 
-    # fix missing ages with median age.. this might not be the best strategy
-    # find median ages
+    # set up embark port data
+    #set the 2 null cases to southampton S which the most common embark port.
+    train['Embarked'].fillna('N',inplace = True)
+    train['NEmbarked'] = train['Embarked'].map( {'S': 0, 'C': 1, 'Q':2, 'N':0} ).astype(int)
+    test['Embarked'].fillna('N',inplace = True)
+    test['NEmbarked'] = test['Embarked'].map( {'S': 0, 'C': 1, 'Q':2, 'N':0} ).astype(int)
+    
+    # fix missing ages/fares with median age/fare.. this might not be the best strategy
+    # find median ages/fares
     median_ages = np.zeros((2,3))
     numagedata = np.zeros((2,3))
+    median_fares = np.zeros((2,3))
+    numfaredata = np.zeros((2,3))
+    all_data.Fare = all_data.Fare.map(lambda x: np.nan if x==0 else x)
     for i in range(0, 2):
         for j in range(0, 3):
             numagedata[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Age'].dropna().count()
             median_ages[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Age'].dropna().median()
-    print(median_ages, 'is the median age among',numagedata, 'number of [female;male]*[Pclass1,2,3]')
-    # create ageFill column
+            numfaredata[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().count()
+            median_fares[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().median()
+#    print(median_ages, 'is the median age among',numagedata, 'number of [female;male]*[Pclass1,2,3]')
+#    print(median_fares, 'is the median fare among',numfaredata, 'number of [female;male]*[Pclass1,2,3]')
+    # create AgeFill/FareFill columns
     train['AgeFill'] = train['Age']
     test['AgeFill'] = test['Age']
-    # Fill in missing ages
+    train['FareFill'] = train['Fare']
+    test['FareFill'] = test['Fare']
+    # Fill in missing ages/fares
     for i in range(0, 2):
         for j in range(0, 3):
             test.loc[ (test.Age.isnull()) & (test.Gender == i) & (test.Pclass == j+1), 'AgeFill'] = median_ages[i,j]
             train.loc[ (train.Age.isnull()) & (train.Gender == i) & (train.Pclass == j+1), 'AgeFill'] = median_ages[i,j]
+            test.loc[ ((test.Fare.isnull()) | (test['Fare']==0)) & (test.Gender == i) & (test.Pclass == j+1), 'FareFill'] = median_fares[i,j]
+            train.loc[ ((train.Fare.isnull()) | (train['Fare']==0)) & (train.Gender == i) & (train.Pclass == j+1), 'FareFill'] = median_fares[i,j]
 
-    # Fill in missing fare
-    numfaredata = all_data['Fare'].dropna().count()
-    median_fare = all_data['Fare'].dropna().median()
-    print("Median fare is : " + str(median_fare)+' for '+str(numfaredata)+' passengers.' )
-    test.loc[test.Fare.isnull(), 'Fare'] = median_fare
 
     ### Create FamilySize
-    ##train['FamilySize'] = train['SibSp'] + train['Parch']
-    ##test['FamilySize'] = test['SibSp'] + train['Parch']
+    train['FamilySize'] = (train['SibSp']>0).astype(float) +(train['SibSp']>3).astype(float)
+    test['FamilySize'] = (train['SibSp']>0).astype(float) +(train['SibSp']>3).astype(float)
+
+    ### Create NewParch
+    train['NewParch'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
+    test['NewParch'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
+
+    ### Create NewAge
+    train['NewAge'] = train['AgeFill'] < 0
+    test['NewAge'] = test['AgeFill'] < 0
+    train['NewAge'] = train['NewAge'] + (train['Gender']*(train['AgeFill']>10)).astype(float) \
+                      +(train['Gender']*(train['AgeFill']>25)).astype(float) \
+                      +(train['Gender']*(train['AgeFill']>55)).astype(float)
+    test['NewAge'] = test['NewAge'] + (test['Gender']*(test['AgeFill']>10)).astype(float) \
+                      +(test['Gender']*(test['AgeFill']>25)).astype(float) \
+                      +(test['Gender']*(test['AgeFill']>55)).astype(float)
+    train['NewAge'] = train['NewAge'] + ((2+~train['Gender'])*(train['AgeFill']>9)).astype(float) \
+                      +((2+~train['Gender'])*(train['AgeFill']>13)).astype(float) \
+                      +((2+~train['Gender'])*(train['AgeFill']>50)).astype(float)
+    test['NewAge'] = test['NewAge'] + ((2+~test['Gender'])*(test['AgeFill']>9)).astype(float) \
+                      +((2+~test['Gender'])*(test['AgeFill']>13)).astype(float) \
+                      +((2+~test['Gender'])*(test['AgeFill']>50)).astype(float)
+
+##    ### Create genderclass
+##    train['GenderClass'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
+##    test['GenderClass'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
 
     #drop unused colums
-    train = train.drop(['PassengerId', 'Name', 'Sex', 'Ticket', 'Cabin', 'Embarked', 'Age'], axis=1)
-    test = test.drop(['PassengerId', 'Name', 'Sex', 'Ticket', 'Cabin', 'Embarked', 'Age'], axis=1) 
+    train = train.drop(['PassengerId', 'Name', 'Sex', 'Ticket','Fare', 'Cabin', 'Embarked', 'Age','AgeFill','SibSp','Parch'], axis=1)
+    test = test.drop(['PassengerId', 'Name', 'Sex', 'Ticket','Fare', 'Cabin', 'Embarked', 'Age','AgeFill','SibSp','Parch'], axis=1) 
 
     train_y = train.values[:,0]
     train_x = train.values[:,1:]

@@ -5,3 +5,51 @@ scan num trees from 1 to 200, minimum error happens somewhere around
 30-70, and flattens completely by 100. 
 different random instances gives slightly different curves. 
 So lets keep it safe at 100.
+
+25/06/2015
+Feature engineering
+SibSp and Parch show similar survival rates for the groupings of 
+0,1-3 and >3
+So make FamilySize and New Parch with these groups.
+
+Age is very complicated. so age has be used in conjugation with gender/class
+Males/Age 
+0-10 have >50% survival, 
+10-25  <10%
+25-55 <20% survival, 
+>55 ~0%
+Females/Age 
+0-9 have >50% survival, 
+9-13 ~0%
+13-50 ~80% survival, 
+>50 ~100%
+made a feature NewAge using these discrete groupings
+##########got up to 0.79
+
+Make separation of train and cv triggered by a random seed
+loop over this 20 times to get random separations and train model on
+each seperation, then majority vote for final prediction.
+#####whoa!! jumped up to 0.81340, which is the score in the top 100.
+
+Increased the number of loops to 100, 
+score jumped to 0.81818, which is rank 52
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
