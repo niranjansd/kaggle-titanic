@@ -34,7 +34,16 @@ each seperation, then majority vote for final prediction.
 Increased the number of loops to 100, 
 score jumped to 0.81818, which is rank 52
 
-
+27/06/2015
+Fare is complicated, use in conjugation with gender
+[[ 80.92915  23.       10.4896 ]
+ [ 50.4958   13.        7.8958 ]] is the median fare 
+[[ 512.3292   65.       69.55  ]
+ [ 512.3292   73.5      69.55  ]] is the max fare 
+[[ 25.7     10.5      6.75  ]
+ [  5.       9.6875   3.1708]] is the min fare among 
+[[ 144.  106.  216.]
+[ 172.  165.  488.]] number of [female;male]*[Pclass1,2,3]
 
 
 

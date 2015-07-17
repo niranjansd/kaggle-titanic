@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
  
@@ -6,7 +7,7 @@ def loadcleandata():
     train = pd.read_csv("train.csv", dtype={"Age": np.float64}, )
     test = pd.read_csv("test.csv", dtype={"Age": np.float64}, )
     all_data = train.append(test)
-
+#    print(train.describe())
     print(train.shape,'training samples')
     print(test.shape,'test samples')
 
@@ -31,6 +32,8 @@ def loadcleandata():
     median_ages = np.zeros((2,3))
     numagedata = np.zeros((2,3))
     median_fares = np.zeros((2,3))
+    max_fares = np.zeros((2,3))
+    min_fares = np.zeros((2,3))
     numfaredata = np.zeros((2,3))
     all_data.Fare = all_data.Fare.map(lambda x: np.nan if x==0 else x)
     for i in range(0, 2):
@@ -39,8 +42,13 @@ def loadcleandata():
             median_ages[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Age'].dropna().median()
             numfaredata[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().count()
             median_fares[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().median()
-#    print(median_ages, 'is the median age among',numagedata, 'number of [female;male]*[Pclass1,2,3]')
-#    print(median_fares, 'is the median fare among',numfaredata, 'number of [female;male]*[Pclass1,2,3]')
+##            max_fares[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().max()
+##            min_fares[i,j] = all_data[(all_data['Gender'] == i) & (all_data['Pclass'] == j+1)]['Fare'].dropna().min()
+##    print(median_ages, 'is the median age among',numagedata, 'number of [female;male]*[Pclass1,2,3]')
+##    print(median_fares, 'is the median fare among',numfaredata, 'number of [female;male]*[Pclass1,2,3]')
+##    print(max_fares, 'is the median fare among',numfaredata, 'number of [female;male]*[Pclass1,2,3]')
+##    print(min_fares, 'is the median fare among',numfaredata, 'number of [female;male]*[Pclass1,2,3]')
+
     # create AgeFill/FareFill columns
     train['AgeFill'] = train['Age']
     test['AgeFill'] = test['Age']
@@ -79,19 +87,64 @@ def loadcleandata():
                       +((2+~test['Gender'])*(test['AgeFill']>13)).astype(float) \
                       +((2+~test['Gender'])*(test['AgeFill']>50)).astype(float)
 
-##    ### Create genderclass
-##    train['GenderClass'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
-##    test['GenderClass'] = (train['Parch']>0).astype(float) +(train['Parch']>2).astype(float)
+    ### Create NewFare
+    train['NewFare'] = train['FareFill'] < 0
+    test['NewFare'] = test['FareFill'] < 0
+    train['NewFare'] = train['NewFare'] \
+                        + (train['Gender']*(train['FareFill']>17)).astype(float) \
+                      +(train['Gender']*(train['FareFill']>50)).astype(float) 
+    test['NewFare'] = test['NewFare'] + (test['Gender']*(test['FareFill']>17)).astype(float) \
+                      +(test['Gender']*(test['FareFill']>50)).astype(float) \
+                      +(test['Gender']*(test['FareFill']>55)).astype(float)
+    train['NewFare'] = train['NewFare'] + ((2+~train['Gender'])*(train['FareFill']>9)).astype(float) \
+                      +((2+~train['Gender'])*(train['FareFill']>13)).astype(float) \
+                      +((2+~train['Gender'])*(train['FareFill']>50)).astype(float)
+    test['NewFare'] = test['NewFare'] + ((2+~test['Gender'])*(test['FareFill']>9)).astype(float) \
+                      +((2+~test['Gender'])*(test['FareFill']>13)).astype(float) \
+                      +((2+~test['Gender'])*(test['FareFill']>50)).astype(float)
 
+##    ### Create Titles features
+##    #find all the titles in the train and test dataset.
+##    #pick and classify by hand, this is not an nlp project
+##    #do not have to split gender (Mr/Mrs), gender class already does that
+##    names = all_data['Name'].values
+##    titles=[[st.strip() for st in re.split(r'[,.]?',name,3)][1] for name in names]
+##    nameset = set(list(all_data['Name'].values))
+##    {'Mme', 'Lady', 'Sir', 'Jonkheer', 'Miss', 'Rev', 'Dr', 'Mrs', 'Major',
+##     'Col', 'Mlle', 'the Countess', 'Dona', 'Capt', 'Master', 'Ms', 'Don', 'Mr'}
+    namedict = {'Mme':0,'Jonkheer':0,'Mlle':0,'Don':0,'Dona':0,'Lady':1,'Sir':1, \
+                'the Countess':1,'Rev':2,'Dr':4,'Major':3,'Col':3,'Capt':3, \
+                'Mr':5,'Mrs':5,'Ms':6,'Miss':6,'Master':6}
+                
+    names = train['Name'].values
+    titles = [[st.strip() for st in re.split(r'[,.]?',name,3)][1] for name in names]
+    train['Titles'] = [namedict[title] for title in titles]
+    names = test['Name'].values
+    titles=[[st.strip() for st in re.split(r'[,.]?',name,3)][1] for name in names]
+    test['Titles'] = [namedict[title] for title in titles]
+
+    ###Create TktInfo
+    tickets = train['Ticket']
+    tickets = [len(ticket)*ticket.isdigit() for ticket in tickets] 
+    train['TktInfo'] = np.asarray(tickets)
+    tickets = test['Ticket']
+    tickets = [len(ticket)*ticket.isdigit() for ticket in tickets] 
+    test['TktInfo'] = np.asarray(tickets)
+
+    ###Create NumCabins
+    
+
+    
     #drop unused colums
     train = train.drop(['PassengerId', 'Name', 'Sex', 'Ticket','Fare', 'Cabin', 'Embarked', 'Age','AgeFill','SibSp','Parch'], axis=1)
     test = test.drop(['PassengerId', 'Name', 'Sex', 'Ticket','Fare', 'Cabin', 'Embarked', 'Age','AgeFill','SibSp','Parch'], axis=1) 
-
+    
     train_y = train.values[:,0]
     train_x = train.values[:,1:]
     test_x = test.values
-
-    return train_x, train_y, test_x, submission
+    features = list(train.columns)
+    
+    return train_x, train_y, test_x, features[1:], submission
 
 
 def sepcv(data,labels,fraction):
